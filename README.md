@@ -1,4 +1,5 @@
-# ExamplePlugin
-This plugin is the basic layout for a BeRP Plugin.
+# Berp plugin | GlobalBanDB
+This plugin allows you to kick globally banned players from your realm.
+It also allows admins of GlobalBanDB to ban players from their own realms with console and ingame commands.
 
-For plugin documentation, visit [here](https://github.com/NobUwU/BeRP/blob/main/docs/plugin.md).
+note: I haven't tested the plugin since I don't own a realm so there might be some bugs. Anyone is welcome to fix these bugs. (if there are any)

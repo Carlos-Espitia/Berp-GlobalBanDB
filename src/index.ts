@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable space-infix-ops */
 /* eslint-disable object-curly-spacing */
@@ -53,49 +54,79 @@ class globalbanDB {
         usage: 'globalplayerlookup <xuidORgamertag>'
       }, async (args) => {
         if(!args[0]) return console.log('Gamertag or xuid has not been specified!')
-        console.log(await GlobalBanDB.PlayerLookUp(args[0])[0])
+        // console.log(await GlobalBanDB.PlayerLookUp(args[0])[0])
+        console.log(await GlobalBanDB.PlayerLookUp(args[0]))
+
       })
     
       ////////////////////
 
       this.api.getCommandManager().registerCommand({
-        command: 'globalplayerlookup',
+        command: 'glookup',
         aliases: ['gplu'],
         description: 'look up globally banned player in game.',
       }, async (res) => {
         if(!res.args[0]) return res.sender.sendMessage('Gamertag or xuid has not been specified!')
-        res.sender.sendMessage(await GlobalBanDB.PlayerLookUp(res.args[0]))
+        const lookupRes: BannedPlayerInfo | string = await GlobalBanDB.PlayerLookUp(res.args[0])
+        if(typeof lookupRes == 'object') {
+          res.sender.sendMessage(`  §7xuid: ${lookupRes.xuid}\n` + 
+          `  §7Gamertag: ${lookupRes.gamertag}\n` +
+          `  §7Rason: ${lookupRes.reason}\n` + 
+          `  §7proof: ${lookupRes.proof}\n` + 
+          `  §7BannedBy: ${lookupRes.bannedBy}\n` + 
+          `  §7Date: ${lookupRes.date}`)
+        } else {
+          res.sender.sendMessage(`§7${lookupRes}`)
+        }
       })
 
-      if(config.AdminXuid == '') return console.log('admin xuid was not provided, you will not be able to use in game commands without providing admin xuid')
-
-      this.api.getCommandManager().registerCommand({
-        command: 'globalban',
-        aliases: ['gb'],
-        description: 'global ban players in game',
-      }, async (res) => {
-        if(!res.args[0]) return res.sender.sendMessage('Gamertag or xuid has not been specified!')
-        if(config.AdminXuid != res.sender.getXuid()) return res.sender.sendMessage('You Do Not Have Permission To Globally Ban Players!')
-        res.sender.sendMessage(await GlobalBanDB.BanPlayer(res.args[0]))
-        res.sender.executeCommand(`kick ${res.args[0]} "${config.KickMessage}"`)
-      })
-      this.api.getCommandManager().registerCommand({
-        command: 'globalunban',
-        aliases: ['gu'],
-        description: 'global unban players in game',
-      }, async (res) => {
-        if(!res.args[0]) return res.sender.sendMessage('Gamertag or xuid has not been specified!')
-        if(config.AdminXuid != res.sender.getXuid()) return res.sender.sendMessage('You Do Not Have Permission To Globally Unban Players!')
-        res.sender.sendMessage(await GlobalBanDB.UnbanPlayer(res.args[0]))
-      })
+      if(config.AdminXuid == '') {
+        console.log('admin xuid was not provided, you will not be able to use in game commands without providing admin xuid')
+      } else {
+        this.api.getCommandManager().registerCommand({
+          command: 'gban',
+          aliases: ['gb'],
+          description: 'global ban players in game',
+        }, async (res) => {
+          if(!res.args[0]) return res.sender.sendMessage('Gamertag or xuid has not been specified!')
+          if(config.AdminXuid != res.sender.getXuid()) return res.sender.sendMessage('You Do Not Have Permission To Globally Ban Players!')
+          const banRes: BanningPlayerPost | string = await GlobalBanDB.BanPlayer(res.args[0])
+          if(typeof banRes == 'object') {
+            res.sender.sendMessage(`  §7${banRes.message}\n`+
+            `  §7Xuid: ${banRes.xuid}\n` +
+            `  §7Gamertag: ${banRes.gamertag}\n` +
+            `  §7BannedBy: ${banRes.bannedBy}\n` +
+            `  §7Date: ${banRes.date}\n`)
+          } else {
+            res.sender.sendMessage(`§7${banRes}`)
+          }
+          res.sender.executeCommand(`kick ${res.args[0]} "${config.KickMessage}"`)
+        })
+        this.api.getCommandManager().registerCommand({
+          command: 'gunban',
+          aliases: ['gu'],
+          description: 'global unban players in game',
+        }, async (res) => {
+          if(!res.args[0]) return res.sender.sendMessage('Gamertag or xuid has not been specified!')
+          if(config.AdminXuid != res.sender.getXuid()) return res.sender.sendMessage('You Do Not Have Permission To Globally Unban Players!')
+          const unbanRes: UnbanningPlayerDelete | string = await GlobalBanDB.UnbanPlayer(res.args[0])
+          if(typeof unbanRes == 'object') {
+            res.sender.sendMessage(`  §7${unbanRes.message}\n`+
+            `  §7Xuid: ${unbanRes.xuid}\n` +
+            `  §7Gamertag: ${unbanRes.gamertag}\n`)
+          } else {
+            res.sender.sendMessage(`§7${unbanRes}`)
+          }
+        })
+      }
     }
     
     //////////////////////////////////
-
     this.api.getEventManager().on('PlayerInitialized', async (player) => {
       if(config.AutoKickGlobalBannedPlayers) {
-        const playerData: string = await GlobalBanDB.PlayerLookUp(player.getXuid())
-        if(playerData.startsWith(`We couldn't find`)) return // really bad code here lol
+        const playerData: string | object = await GlobalBanDB.PlayerLookUp(player.getXuid())
+        console.log(playerData)
+        if(typeof playerData == 'string') return 
         console.log(`kicked global banned player from realm. Name: ${player.getName()}`)
         player.executeCommand(`kick "${player.getXuid()}" "${config.KickMessage}"`)
       }
@@ -109,7 +140,9 @@ class globalbanDB {
 //////////////////////////////////////////////
 
 import axios from "axios"
-const DB_API = 'https://mcbe-playerbans.herokuapp.com'
+const DB_API = 'http://localhost:5000'
+//https://mcbe-playerbans.herokuapp.com
+//http://localhost:5000
 
 class BannedPlayersDB {
   BannedPlayers: Array<BannedPlayerInfo>;
@@ -123,6 +156,22 @@ class BannedPlayerInfo {
   gamertag: string | undefined
   reason: string | undefined
   proof: string | undefined
+  bannedBy: string | undefined
+  date: string | undefined
+}
+class BanningPlayerPost {
+  message: string | undefined
+  xuid: number | undefined
+  gamertag: string | undefined
+  reason: string | undefined
+  proof: string | undefined
+  bannedBy: string | undefined
+  date: string | undefined
+}
+class UnbanningPlayerDelete {
+  message: string | undefined
+  xuid: number | undefined
+  gamertag: string | undefined
 }
 
 class globalBanDB {
