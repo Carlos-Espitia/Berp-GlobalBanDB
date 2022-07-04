@@ -140,7 +140,7 @@ class globalbanDB {
 //////////////////////////////////////////////
 
 import axios from "axios"
-const DB_API = 'http://localhost:5000'
+const DB_API = 'https://mcbe-playerbans.herokuapp.com'
 //https://mcbe-playerbans.herokuapp.com
 //http://localhost:5000
 
